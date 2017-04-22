@@ -113,6 +113,7 @@ with_bilateral   short              0
 bilateral_sigma_s short              5                
 bilateral_sigma_r float              0.05             
 mode             short              0                
+device_id        string                              
 ================ ================== ================ ======
 
 Ports

@@ -1,4 +1,4 @@
-// -*- C++ -*-
+﻿// -*- C++ -*-
 /*!
  * @file  RealSenseToPC.h
  * @brief Intel RealSense3D Grabber
@@ -38,6 +38,7 @@ using namespace PointCloudTypes;
 
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/format.hpp>
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -287,6 +288,12 @@ class RealSenseToPC
    * - DefaultValue: 0
    */
   short int m_mode;
+  /*!
+   * 
+   * - Name:  device_id
+   * - DefaultValue:  
+   */
+  std::string m_device_id;
 
   // </rtc-template>
 
@@ -331,6 +338,7 @@ class RealSenseToPC
 
    boost::shared_ptr<pcl::RealSenseGrabber> m_interface;
    void cloud_cb(const pcl::PointCloud<PointT>::ConstPtr &cloud);
+   void printDeviceList();
    short int m_window_prev;
    short int m_threshold_prev;
    short int m_temporal_filtering_prev;

@@ -10,7 +10,7 @@
 #   --module-desc='Intel RealSense3D Grabber' --module-version=1.0.0 --module-vendor=OECU 
 #   --module-category=PointCloud --module-comp-type=STATIC 
 #   --module-act-type=PERIODIC --module-max-inst=1 
-#   --config=window:short:3 --config=threshold:short:6 --config=temporal_filtering:short:0 --config=with_bilateral:short:0 --config=bilateral_sigma_s:short:5 --config=bilateral_sigma_r:float:0.05 --config=mode:short:0 
+#   --config=window:short:3 --config=threshold:short:6 --config=temporal_filtering:short:0 --config=with_bilateral:short:0 --config=bilateral_sigma_s:short:5 --config=bilateral_sigma_r:float:0.05 --config=mode:short:0 --config=device_id:string:  
 #   --outport=pc:PointCloudTypes::PointCloud 
 
 
@@ -159,6 +159,14 @@ Lang Type:
 		Description:     
 		Type:            short
 		DefaultValue:     0
+		Unit:            
+		Range:           
+		Constraint:      
+
+		Name:             device_id
+		Description:     
+		Type:            string
+		DefaultValue:      
 		Unit:            
 		Range:           
 		Constraint:      

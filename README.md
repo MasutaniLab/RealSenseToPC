@@ -1,8 +1,8 @@
-# RTC:PCL Grabber for Intel RealSense3D
+# Point Cloud Grabber for Intel RealSense
 
 大阪電気通信大学  
 升谷 保博  
-2017年3月20日
+2017年4月22日
 
 ## はじめに
 
@@ -36,12 +36,12 @@
 をインストール．
 - [Intel RealSense SDK Essentials for  Windows](https://registrationcenter.intel.com/en/forms/?productid=2797)
 をインストール．
-- [RTCPCLRealSense3D](https://github.com/MasutaniLab/RTCPCLRealSense3D)
+- [RealSenseToPC](https://github.com/MasutaniLab/RealSenseToPC)
 をクローンかダウンロードする．
 - CMake
   - ビルドディレクトリはトップ直下の`build`
   - ConfigureはVisual Studio 64bit
-- `build\RTCPCLRealSense3D.sln`をVisual Studioで開く．
+- `build\RealSenseToPC.sln`をVisual Studioで開く．
 - パフォーマンスを出すために，Releaseでビルドがお勧め．
 
 ## 使い方
@@ -51,16 +51,25 @@
 rtc.confに`corba.args: -ORBgiopMaxMsgSize`の設定が必要です．
 トップディレクトリのrtc.confでは`corba.args: -ORBgiopMaxMsgSize 20971520`
 にしています（デフォルト値の10倍）．
-- コンポーネントを起動するバッチファイル`RTCPCLRealSense3DComp.bat`を用意しています．
+- コンポーネントを起動するバッチファイル`RealSenseToPCComp.bat`を用意しています．
   - ビルドディレクトリがトップ直下の`build`であることを仮定しています．
   - 環境変数`RTM_VC_CONFIG`を`Debug`か`Release`に設定してください．
 - 動作確認のための接続相手として，
 [PointCloudViewer](https://github.com/MasutaniLab/PointCloudViewer)
 を使ってください．
 
+### コンフィギュレーション
+- window: 時間的フィルタのウィンドウサイズ
+- threshold: 信頼度しきい値
+- temporal_filtering: 時間的フィルタの種類（0:なし，1:メジアン, 2:平均）
+- with_bilateral: バイラテラルフィルタ（0:なし，1:あり）
+- bilateral_sigma_s: バイラテラルフィルタの空間の標準偏差
+- bilateral_sigma_r: バイラテラルフィルタのレンジの標準偏差
+- mode: RealSenseの動作モード
+- device_id: シリアル番号（例:231400041-03）かデバイスインデックス（例:#2ならば2番目に接続したもの）
+
 ## 既知の問題・TODO
 
-- 320×240で出力しています．コンフィギュレーションで変更できるようにすべきです．
 - type "xyzrgb"しか出力できません．
 - 1点のサイズは16byte，320×240の場合1回に送出するデータ量は1.2MB．もっと圧縮すべきかもしれません．
 - Windowsでしか動作しません．

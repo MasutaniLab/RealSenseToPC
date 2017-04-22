@@ -1,4 +1,4 @@
-// -*- C++ -*-
+﻿// -*- C++ -*-
 /*!
  * @file  RealSenseToPC.cpp
  * @brief Intel RealSense3D Grabber
@@ -38,6 +38,7 @@ static const char* realsensetopc_spec[] =
     "conf.default.bilateral_sigma_s", "5",
     "conf.default.bilateral_sigma_r", "0.05",
     "conf.default.mode", "0",
+    "conf.default.device_id", " ",
 
     // Widget
     "conf.__widget__.window", "slider.1",
@@ -47,6 +48,7 @@ static const char* realsensetopc_spec[] =
     "conf.__widget__.bilateral_sigma_s", "slider.1",
     "conf.__widget__.bilateral_sigma_r", "slider.0.01",
     "conf.__widget__.mode", "text",
+    "conf.__widget__.device_id", "text",
     // Constraints
     "conf.__constraints__.window", "1<=x<=100",
     "conf.__constraints__.threshold", "0<=x<=15",
@@ -62,6 +64,7 @@ static const char* realsensetopc_spec[] =
     "conf.__type__.bilateral_sigma_s", "short",
     "conf.__type__.bilateral_sigma_r", "float",
     "conf.__type__.mode", "short",
+    "conf.__type__.device_id", "string",
 
     ""
   };
@@ -116,8 +119,11 @@ RTC::ReturnCode_t RealSenseToPC::onInitialize()
   bindParameter("bilateral_sigma_s", m_bilateral_sigma_s, "5");
   bindParameter("bilateral_sigma_r", m_bilateral_sigma_r, "0.05");
   bindParameter("mode", m_mode, "0");
+  bindParameter("device_id", m_device_id, " ");
   // </rtc-template>
   
+  printDeviceList();
+
   return RTC::RTC_OK;
 }
 
@@ -142,18 +148,28 @@ RTC::ReturnCode_t RealSenseToPC::onShutdown(RTC::UniqueId ec_id)
 }
 */
 
-#define MODE320X240
-
 RTC::ReturnCode_t RealSenseToPC::onActivated(RTC::UniqueId ec_id)
 {
   cout << "RealSenseToPC::onActivated()" << endl;
   try {
-    m_interface = boost::make_shared<pcl::RealSenseGrabber>();
-#ifdef MODE320X240
-    vector<pcl::RealSenseGrabber::Mode> xyz_modes = m_interface->getAvailableModes (true);
-    vector<pcl::RealSenseGrabber::Mode> xyzrgba_modes = m_interface->getAvailableModes (false);
-    m_interface->setMode (xyzrgba_modes[27-xyz_modes.size ()-1], true);
-#endif
+    string device_id = m_device_id;
+    if (device_id == " ") device_id = "";
+    m_interface = boost::make_shared<pcl::RealSenseGrabber>(device_id);
+    vector<pcl::RealSenseGrabber::Mode> xyz_modes = m_interface->getAvailableModes(true);
+    vector<pcl::RealSenseGrabber::Mode> xyzrgba_modes = m_interface->getAvailableModes(false);
+    if (m_mode <= 0) {
+      cout << "Default mode" << endl;
+    } else if (m_mode && m_mode <= xyz_modes.size()) {
+      cerr << "Depth only is not supported." << endl;
+      return RTC::RTC_ERROR;
+    } else if (m_mode <= xyz_modes.size() + xyzrgba_modes.size()) {
+      cout << "mode: " << m_mode << endl;
+      m_interface->setMode(xyzrgba_modes[m_mode-xyz_modes.size ()-1], true);
+    } else {
+      cerr << "mode: " << m_mode << " is not supported." << endl;
+      return RTC::RTC_ERROR;
+    }
+
     m_pc.type = "xyzrgb";
     m_pc.fields.length(6);
     m_pc.fields[0].name = "x";
@@ -194,7 +210,7 @@ RTC::ReturnCode_t RealSenseToPC::onActivated(RTC::UniqueId ec_id)
     print(mode.color_width);
     print(mode.color_height);
   } catch (pcl::io::IOException& e) {
-    cerr << "Failed to create a grabber: " << e.what () << endl;
+    cerr << "Failed to create a grabber: " << e.what () << endl; //ここでプログラムが終了してしまう問題あり
     return RTC::RTC_ERROR;
   } catch (...) {
     cerr << "An exception occurred while starting grabber" << endl;
@@ -361,6 +377,51 @@ void RealSenseToPC::cloud_cb(const pcl::PointCloud<PointT>::ConstPtr &cloudOrg)
     count = 0;
     last = now;
   }
+}
+
+void RealSenseToPC::printDeviceList()
+{
+  typedef boost::shared_ptr<pcl::RealSenseGrabber> RealSenseGrabberPtr;
+  std::vector<RealSenseGrabberPtr> grabbers;
+  std::cout << "Connected devices: ";
+  boost::format fmt ("\n  #%i  %s");
+  boost::format fmt_dm ("\n        %2i) %d Hz  %dx%d Depth");
+  boost::format fmt_dcm ("\n        %2i) %d Hz  %dx%d Depth  %dx%d Color");
+  while (true)
+  {
+    try
+    {
+      grabbers.push_back (RealSenseGrabberPtr (new pcl::RealSenseGrabber));
+      std::cout << boost::str (fmt % grabbers.size () % grabbers.back ()->getDeviceSerialNumber ());
+      std::vector<pcl::RealSenseGrabber::Mode> xyz_modes = grabbers.back ()->getAvailableModes (true);
+      std::cout << "\n      Depth modes:";
+      if (xyz_modes.size ())
+        for (size_t i = 0; i < xyz_modes.size (); ++i)
+          std::cout << boost::str (fmt_dm % (i + 1) % xyz_modes[i].fps % xyz_modes[i].depth_width % xyz_modes[i].depth_height);
+      else
+      {
+        std::cout << " none";
+      }
+      std::vector<pcl::RealSenseGrabber::Mode> xyzrgba_modes = grabbers.back ()->getAvailableModes (false);
+      std::cout << "\n      Depth + color modes:";
+      if (xyz_modes.size ())
+        for (size_t i = 0; i < xyzrgba_modes.size (); ++i)
+        {
+          const pcl::RealSenseGrabber::Mode& m = xyzrgba_modes[i];
+          std::cout << boost::str (fmt_dcm % (i + xyz_modes.size () + 1) % m.fps % m.depth_width % m.depth_height % m.color_width % m.color_height);
+        }
+      else
+        std::cout << " none";
+    }
+    catch (pcl::io::IOException& e)
+    {
+      break;
+    }
+  }
+  if (grabbers.size ())
+    std::cout << std::endl;
+  else
+    std::cout << "none" << std::endl;
 }
 
 extern "C"
