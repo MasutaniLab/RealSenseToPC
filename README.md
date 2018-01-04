@@ -39,7 +39,7 @@
 をクローンかダウンロードする．
 - CMake
   - ビルドディレクトリはトップ直下の`build`
-  - ConfigureはVisual Studio 64bit
+  - ConfigureはVisual Studioのバージョンとプラットフォームに合わせる．
 - `build\RealSenseToPC.sln`をVisual Studioで開く．
 - パフォーマンスを出すために，Releaseでビルドがお勧め．
 
