@@ -2,7 +2,7 @@
 
 大阪電気通信大学  
 升谷 保博  
-2017年4月22日
+2018年1月4日（VS2015とPCL 1.8.1へ移行）
 
 ## はじめに
 
@@ -10,9 +10,9 @@
 出力するRTコンポーネントです．
 - 以下の環境で開発，動作確認しています．
   - Windows 10 64bit版
-  - Visual Studio 2012
+  - Visual Studio 2015 x64
   - OpenRTM-aist 1.1.2 64bit版
-  - Point Cloud Library 1.7.2 AllinOne (VS2012 64bit用)
+  - Point Cloud Library 1.8.1 AllinOne (VS2015 64bit用)
   - Intel RealSense Developer Kit (R200)
   - Intel® RealSense SDK Essentials for Windows Version 11.0
   - R200 Camera Driver Build Number: 2.1.27.2853
@@ -30,12 +30,11 @@
 ## インストール
 
 - [OpenRTM-aist 1.1.2](http://www.openrtm.org/openrtm/ja/node/6034)をインストール．
-- [PCL-1.7.2のWindows用AllInOne](https://onedrive.live.com/?authkey=!ACFnPNzPhXJ0FtU&id=EC9EBB2646FF189A!49089&cid=EC9EBB2646FF189A)
-をインストール（2017年3月下旬に削除されたようです）．
+- [GitHubのpclのRelease](https://github.com/PointCloudLibrary/pcl/releases)の中のWindows用AllInOne`PCL-X.X.X-AllInOne-msvcYYYY-winZZ.exe`をインストール．
 - [Intel RealSense Camera Driver Software](https://software.intel.com/en-us/intel-realsense-sdk/download)
-をインストール．
+をインストール（ダウンロードは可能ですが，もう更新されていません）．
 - [Intel RealSense SDK Essentials for  Windows](https://registrationcenter.intel.com/en/forms/?productid=2797)
-をインストール．
+をインストール（要ユーザ登録．ダウンロードは可能ですが，もう更新されていません）．
 - [RealSenseToPC](https://github.com/MasutaniLab/RealSenseToPC)
 をクローンかダウンロードする．
 - CMake
@@ -51,7 +50,7 @@
 rtc.confに`corba.args: -ORBgiopMaxMsgSize`の設定が必要です．
 トップディレクトリのrtc.confでは`corba.args: -ORBgiopMaxMsgSize 20971520`
 にしています（デフォルト値の10倍）．
-- コンポーネントを起動するバッチファイル`RealSenseToPCComp.bat`を用意しています．
+- コンポーネントを起動するバッチファイル`RealSenseToPC.bat`を用意しています．
   - ビルドディレクトリがトップ直下の`build`であることを仮定しています．
   - 環境変数`RTM_VC_CONFIG`を`Debug`か`Release`に設定してください．
 - 動作確認のための接続相手として，
@@ -74,4 +73,5 @@ rtc.confに`corba.args: -ORBgiopMaxMsgSize`の設定が必要です．
 - 1点のサイズは16byte，320×240の場合1回に送出するデータ量は1.2MB．もっと圧縮すべきかもしれません．
 - Windowsでしか動作しません．
 - [PCL grabber for RealSense devices](https://github.com/taketwo/rs)のコードは
-PCL 1.8に取り込まれたそうですので，PCL 1.8では，もっと簡単に作ることができるはずです．
+PCL 1.8に取り込まれましたが，AllInOneパッケージには含まれていません（1.8.1で確認）．
+- RealSense SDKから[librealsense](https://github.com/IntelRealSense/librealsense)へ乗り換えるか検討中です．
