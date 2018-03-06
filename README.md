@@ -26,6 +26,8 @@
 [RT-Components for the Point Cloud Library](https://github.com/gbiggs/rtcpcl/)
 に[含まれているもの](https://github.com/gbiggs/rtcpcl/blob/master/pc_type/pointcloud.idl)
 をそのまま使っています．
+- 出力する点群を表す座標系は，x軸は右向きが正，z軸は後ろ向きが正です（それぞれRealSenseの座標系と逆向き，y軸はどちらも上向きが正）．
+Choeonoidの深度センサのモデルに合わせるためにこのようにしています．
 
 ## インストール
 
