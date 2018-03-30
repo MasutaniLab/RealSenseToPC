@@ -12,6 +12,7 @@
 #include <string>
 #include <iomanip>
 #include <sstream>
+#include "real_sense/real_sense_device_manager.h"
 using namespace std;
 
 typedef pcl::RealSenseGrabber::TemporalFilteringType TFT;
@@ -153,6 +154,7 @@ RTC::ReturnCode_t RealSenseToPC::onActivated(RTC::UniqueId ec_id)
 {
   RTC_INFO(("onActivated()"));
   try {
+    pcl::io::real_sense::RealSenseDeviceManager::getInstance()->populateDeviceList();
     string device_id = m_device_id;
     if (device_id == " ") device_id = "";
     m_interface = boost::make_shared<pcl::RealSenseGrabber>(device_id);
@@ -210,8 +212,8 @@ RTC::ReturnCode_t RealSenseToPC::onActivated(RTC::UniqueId ec_id)
     RTC_INFO_VAR(mode.depth_height);
     RTC_INFO_VAR(mode.color_width);
     RTC_INFO_VAR(mode.color_height);
-  } catch (pcl::io::IOException& e) {
-    RTC_ERROR(("Failed to create a grabber: %s", e.what())); //ここでプログラムが終了してしまう問題あり
+  } catch (exception& e) {
+    RTC_ERROR(("Failed to create a grabber: %s", e.what()));
     return RTC::RTC_ERROR;
   } catch (...) {
     RTC_ERROR(("An exception occurred while starting grabber"));
@@ -225,8 +227,11 @@ RTC::ReturnCode_t RealSenseToPC::onActivated(RTC::UniqueId ec_id)
 RTC::ReturnCode_t RealSenseToPC::onDeactivated(RTC::UniqueId ec_id)
 {
   RTC_INFO(("onDeactivated()"));
-  m_interface->stop();
-  m_interface = nullptr;
+
+  if (m_interface) {
+    m_interface->stop();
+    m_interface.reset();
+  }
 
   return RTC::RTC_OK;
 }

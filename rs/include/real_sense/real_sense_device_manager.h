@@ -100,7 +100,12 @@ namespace pcl
 
           ~RealSenseDeviceManager ();
 
-        private:
+          /** This function discovers devices that are capable of streaming
+          * depth data. */
+          void
+            populateDeviceList();
+
+      private:
 
           struct DeviceInfo
           {
@@ -116,11 +121,6 @@ namespace pcl
           capture (DeviceInfo& device_info);
 
           RealSenseDeviceManager ();
-
-          /** This function discovers devices that are capable of streaming
-            * depth data. */
-          void
-          populateDeviceList ();
 
           boost::shared_ptr<PXCSession> session_;
           boost::shared_ptr<PXCCaptureManager> capture_manager_;
