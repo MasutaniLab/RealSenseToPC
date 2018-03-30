@@ -172,6 +172,7 @@ pcl::RealSenseGrabber::start ()
         THROW_IO_EXCEPTION ("Invalid stream profile for PXC device");
       frequency_.reset ();
       is_running_ = true;
+      threadTrouble_ = false;
       thread_ = boost::thread (&RealSenseGrabber::run, this);
     }
   }
@@ -302,125 +303,130 @@ pcl::RealSenseGrabber::run ()
   std::vector<PXCPoint3DF32> vertices (SIZE);
   createDepthBuffer ();
 
-  while (is_running_)
-  {
-    pcl::PointCloud<pcl::PointXYZ>::Ptr xyz_cloud;
-    pcl::PointCloud<pcl::PointXYZRGBA>::Ptr xyzrgba_cloud;
-
-    pxcStatus status;
-    if (need_xyzrgba_)
-      status = device_->getPXCDevice ().ReadStreams (PXCCapture::STREAM_TYPE_DEPTH | PXCCapture::STREAM_TYPE_COLOR, &sample);
-    else
-      status = device_->getPXCDevice ().ReadStreams (PXCCapture::STREAM_TYPE_DEPTH, &sample);
-
-    uint64_t timestamp = pcl::getTime () * 1.0e+6;
-
-    switch (status)
+  try {
+    while (is_running_)
     {
-    case PXC_STATUS_NO_ERROR:
-    {
-      fps_mutex_.lock ();
-      frequency_.event ();
-      fps_mutex_.unlock ();
+      pcl::PointCloud<pcl::PointXYZ>::Ptr xyz_cloud;
+      pcl::PointCloud<pcl::PointXYZRGBA>::Ptr xyzrgba_cloud;
 
-      /* We preform the following steps to convert received data into point clouds:
-       *
-       *   1. Push depth image to the depth buffer
-       *   2. Pull filtered depth image from the depth buffer
-       *   3. Project (filtered) depth image into 3D
-       *   4. Fill XYZ point cloud with computed points
-       *   5. Fill XYZRGBA point cloud with computed points
-       *   7. Project color image into 3D
-       *   6. Assign colors to points in XYZRGBA point cloud
-       *
-       * Steps 1-2 are skipped if temporal filtering is disabled.
-       * Step 4 is skipped if there are no subscribers for XYZ clouds.
-       * Steps 5-7 are skipped if there are no subscribers for XYZRGBA clouds. */
-
-      if (temporal_filtering_type_ != RealSense_None)
-      {
-        PXCImage::ImageData data;
-        sample.depth->AcquireAccess (PXCImage::ACCESS_READ, &data);
-        std::vector<unsigned short> data_copy (SIZE);
-        memcpy (data_copy.data (), data.planes[0], SIZE * sizeof (unsigned short));
-        sample.depth->ReleaseAccess (&data);
-
-        depth_buffer_->push (data_copy);
-
-        sample.depth->AcquireAccess (PXCImage::ACCESS_WRITE, &data);
-        unsigned short* d = reinterpret_cast<unsigned short*> (data.planes[0]);
-        for (size_t i = 0; i < SIZE; i++)
-          d[i] = (*depth_buffer_)[i];
-        sample.depth->ReleaseAccess (&data);
-      }
-
-      projection->QueryVertices (sample.depth, vertices.data ());
-
-      if (need_xyz_)
-      {
-        xyz_cloud.reset (new pcl::PointCloud<pcl::PointXYZ> (WIDTH, HEIGHT));
-        xyz_cloud->header.stamp = timestamp;
-        xyz_cloud->is_dense = false;
-        for (int i = 0; i < SIZE; i++)
-          convertPoint (vertices[i], xyz_cloud->points[i]);
-      }
-
+      pxcStatus status;
       if (need_xyzrgba_)
+        status = device_->getPXCDevice().ReadStreams(PXCCapture::STREAM_TYPE_DEPTH | PXCCapture::STREAM_TYPE_COLOR, &sample);
+      else
+        status = device_->getPXCDevice().ReadStreams(PXCCapture::STREAM_TYPE_DEPTH, &sample);
+
+      uint64_t timestamp = pcl::getTime() * 1.0e+6;
+
+      switch (status)
       {
-        PXCImage::ImageData data;
-        PXCImage* mapped = projection->CreateColorImageMappedToDepth (sample.depth, sample.color);
-        mapped->AcquireAccess (PXCImage::ACCESS_READ, &data);
-        uint32_t* d = reinterpret_cast<uint32_t*> (data.planes[0]);
+      case PXC_STATUS_NO_ERROR:
+      {
+        fps_mutex_.lock();
+        frequency_.event();
+        fps_mutex_.unlock();
+
+        /* We preform the following steps to convert received data into point clouds:
+         *
+         *   1. Push depth image to the depth buffer
+         *   2. Pull filtered depth image from the depth buffer
+         *   3. Project (filtered) depth image into 3D
+         *   4. Fill XYZ point cloud with computed points
+         *   5. Fill XYZRGBA point cloud with computed points
+         *   7. Project color image into 3D
+         *   6. Assign colors to points in XYZRGBA point cloud
+         *
+         * Steps 1-2 are skipped if temporal filtering is disabled.
+         * Step 4 is skipped if there are no subscribers for XYZ clouds.
+         * Steps 5-7 are skipped if there are no subscribers for XYZRGBA clouds. */
+
+        if (temporal_filtering_type_ != RealSense_None)
+        {
+          PXCImage::ImageData data;
+          sample.depth->AcquireAccess(PXCImage::ACCESS_READ, &data);
+          std::vector<unsigned short> data_copy(SIZE);
+          memcpy(data_copy.data(), data.planes[0], SIZE * sizeof(unsigned short));
+          sample.depth->ReleaseAccess(&data);
+
+          depth_buffer_->push(data_copy);
+
+          sample.depth->AcquireAccess(PXCImage::ACCESS_WRITE, &data);
+          unsigned short* d = reinterpret_cast<unsigned short*> (data.planes[0]);
+          for (size_t i = 0; i < SIZE; i++)
+            d[i] = (*depth_buffer_)[i];
+          sample.depth->ReleaseAccess(&data);
+        }
+
+        projection->QueryVertices(sample.depth, vertices.data());
+
         if (need_xyz_)
         {
-          // We can fill XYZ coordinates more efficiently using pcl::copyPointCloud,
-          // given that they were already computed for XYZ point cloud.
-          xyzrgba_cloud.reset (new pcl::PointCloud<pcl::PointXYZRGBA>);
-          pcl::copyPointCloud (*xyz_cloud, *xyzrgba_cloud);
-          for (int i = 0; i < HEIGHT; i++)
-          {
-            pcl::PointXYZRGBA* cloud_row = &xyzrgba_cloud->points[i * WIDTH];
-            uint32_t* color_row = &d[i * data.pitches[0] / sizeof (uint32_t)];
-            for (int j = 0; j < WIDTH; j++)
-              memcpy (&cloud_row[j].rgba, &color_row[j], sizeof (uint32_t));
-          }
+          xyz_cloud.reset(new pcl::PointCloud<pcl::PointXYZ>(WIDTH, HEIGHT));
+          xyz_cloud->header.stamp = timestamp;
+          xyz_cloud->is_dense = false;
+          for (int i = 0; i < SIZE; i++)
+            convertPoint(vertices[i], xyz_cloud->points[i]);
         }
-        else
+
+        if (need_xyzrgba_)
         {
-          xyzrgba_cloud.reset (new pcl::PointCloud<pcl::PointXYZRGBA> (WIDTH, HEIGHT));
-          xyzrgba_cloud->header.stamp = timestamp;
-          xyzrgba_cloud->is_dense = false;
-          for (int i = 0; i < HEIGHT; i++)
+          PXCImage::ImageData data;
+          PXCImage* mapped = projection->CreateColorImageMappedToDepth(sample.depth, sample.color);
+          mapped->AcquireAccess(PXCImage::ACCESS_READ, &data);
+          uint32_t* d = reinterpret_cast<uint32_t*> (data.planes[0]);
+          if (need_xyz_)
           {
-            PXCPoint3DF32* vertices_row = &vertices[i * WIDTH];
-            pcl::PointXYZRGBA* cloud_row = &xyzrgba_cloud->points[i * WIDTH];
-            uint32_t* color_row = &d[i * data.pitches[0] / sizeof (uint32_t)];
-            for (int j = 0; j < WIDTH; j++)
+            // We can fill XYZ coordinates more efficiently using pcl::copyPointCloud,
+            // given that they were already computed for XYZ point cloud.
+            xyzrgba_cloud.reset(new pcl::PointCloud<pcl::PointXYZRGBA>);
+            pcl::copyPointCloud(*xyz_cloud, *xyzrgba_cloud);
+            for (int i = 0; i < HEIGHT; i++)
             {
-              convertPoint (vertices_row[j], cloud_row[j]);
-              memcpy (&cloud_row[j].rgba, &color_row[j], sizeof (uint32_t));
+              pcl::PointXYZRGBA* cloud_row = &xyzrgba_cloud->points[i * WIDTH];
+              uint32_t* color_row = &d[i * data.pitches[0] / sizeof(uint32_t)];
+              for (int j = 0; j < WIDTH; j++)
+                memcpy(&cloud_row[j].rgba, &color_row[j], sizeof(uint32_t));
+            }
+          } else
+          {
+            xyzrgba_cloud.reset(new pcl::PointCloud<pcl::PointXYZRGBA>(WIDTH, HEIGHT));
+            xyzrgba_cloud->header.stamp = timestamp;
+            xyzrgba_cloud->is_dense = false;
+            for (int i = 0; i < HEIGHT; i++)
+            {
+              PXCPoint3DF32* vertices_row = &vertices[i * WIDTH];
+              pcl::PointXYZRGBA* cloud_row = &xyzrgba_cloud->points[i * WIDTH];
+              uint32_t* color_row = &d[i * data.pitches[0] / sizeof(uint32_t)];
+              for (int j = 0; j < WIDTH; j++)
+              {
+                convertPoint(vertices_row[j], cloud_row[j]);
+                memcpy(&cloud_row[j].rgba, &color_row[j], sizeof(uint32_t));
+              }
             }
           }
+          mapped->ReleaseAccess(&data);
+          mapped->Release();
         }
-        mapped->ReleaseAccess (&data);
-        mapped->Release ();
-      }
 
-      if (need_xyzrgba_)
-        point_cloud_rgba_signal_->operator () (xyzrgba_cloud);
-      if (need_xyz_)
-        point_cloud_signal_->operator () (xyz_cloud);
-      break;
+        if (need_xyzrgba_)
+          point_cloud_rgba_signal_->operator () (xyzrgba_cloud);
+        if (need_xyz_)
+          point_cloud_signal_->operator () (xyz_cloud);
+        break;
+      }
+      case PXC_STATUS_DEVICE_LOST:
+        THROW_IO_EXCEPTION("failed to read data stream from PXC device: device lost");
+      case PXC_STATUS_ALLOC_FAILED:
+        THROW_IO_EXCEPTION("failed to read data stream from PXC device: alloc failed");
+      }
+      sample.ReleaseImages();
     }
-    case PXC_STATUS_DEVICE_LOST:
-      THROW_IO_EXCEPTION ("failed to read data stream from PXC device: device lost");
-    case PXC_STATUS_ALLOC_FAILED:
-      THROW_IO_EXCEPTION ("failed to read data stream from PXC device: alloc failed");
-    }
-    sample.ReleaseImages ();
+    projection->Release();
+    RealSenseDevice::reset(device_);
   }
-  projection->Release ();
-  RealSenseDevice::reset (device_);
+  catch (std::exception &e) {
+    std::cout << "run(): " << e.what() << std::endl;
+    threadTrouble_ = true;
+  }
 }
 
 float

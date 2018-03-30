@@ -220,6 +220,9 @@ RTC::ReturnCode_t RealSenseToPC::onActivated(RTC::UniqueId ec_id)
     return RTC::RTC_ERROR;
   }
 
+  m_count = 0;
+  m_last = 0;
+
   return RTC::RTC_OK;
 }
 
@@ -239,6 +242,11 @@ RTC::ReturnCode_t RealSenseToPC::onDeactivated(RTC::UniqueId ec_id)
 
 RTC::ReturnCode_t RealSenseToPC::onExecute(RTC::UniqueId ec_id)
 {
+  if (m_interface->threadTrouble()) {
+    RTC_ERROR(("threadTrouble"));
+    return RTC::RTC_ERROR;
+  }
+
   if (m_window != m_window_prev ) {
     m_window_prev = m_window;
     if (m_window_prev < 1) {
@@ -370,17 +378,14 @@ void RealSenseToPC::cloud_cb(const pcl::PointCloud<PointT>::ConstPtr &cloudOrg)
   }
   m_pcOut.write();
 
-  static int count = 0;
-  static double last = 0;
-
-  if (++count == 30)
+  if (++m_count == 30)
   {
     double now = pcl::getTime();
 #if 1
-    RTC_INFO(("Average framerate: %lf Hz", double(count)/double(now - last)));
+    RTC_INFO(("Average framerate: %lf Hz", double(m_count)/double(now - m_last)));
 #endif
-    count = 0;
-    last = now;
+    m_count = 0;
+    m_last = now;
   }
 }
 

@@ -215,6 +215,11 @@ namespace pcl
         return (mode_selected_);
       }
 
+      bool threadTrouble()
+      {
+        return threadTrouble_;
+      }
+
     private:
 
       void
@@ -273,6 +278,7 @@ namespace pcl
       /// Depth buffer to perform temporal filtering of the depth images
       boost::shared_ptr<pcl::io::Buffer<unsigned short> > depth_buffer_;
 
+      bool threadTrouble_;
   };
 
 }

@@ -347,6 +347,10 @@ class RealSenseToPC
    float m_bilateral_sigma_r_prev;
 
    pcl::FastBilateralFilter<PointT> m_bilateral;
+
+   int m_count;
+   double m_last;
+
 };
 
 
