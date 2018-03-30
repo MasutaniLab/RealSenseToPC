@@ -2,7 +2,7 @@
 
 大阪電気通信大学  
 升谷 保博  
-2018年1月4日（VS2015とPCL 1.8.1へ移行）
+2018年3月30日（rsの扱いを変更）
 
 ## はじめに
 
@@ -18,8 +18,8 @@
   - R200 Camera Driver Build Number: 2.1.27.2853
 - Sergey Alexandrov (taketwo) 氏の
 [PCL grabber for RealSense devices](https://github.com/taketwo/rs)のコードを
-そのまま利用しています．それらはディレクトリrsに置いています．
-- CMakeでRealSense SDKを見つけるモジュールもSergey Alexandrov氏の
+少し改変して利用しています．それらはディレクトリrsに置いています．
+- CMakeでRealSense SDKを見つけるモジュールはSergey Alexandrov氏の
 [`FindRSSDK.cmake`](https://github.com/taketwo/rs/blob/master/cmake/Modules/FindRSSDK.cmake)
 をそのまま使っています．
 - `pointcloud.idl` は，Geoffrey Biggs (gbiggs)氏の
